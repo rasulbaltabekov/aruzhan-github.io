@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Аконе!</title>
+    <style>
+      body {
+          margin: 0;
+          overflow: hidden;
+          position: relative;
+          background: radial-gradient(circle, #ff4081, #800000);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+      }
+      canvas {
+          display: block;
+          position: absolute;
+          top: 0;
+          left: 0;
+      }
+      .animation-container {
+          position: absolute;
+          top: 50px;
+          left: 50%;
+          transform: translateX(-50%);
+          opacity: 0;
+          animation: fade-in 2s ease forwards;
+          font-family: Arial, sans-serif;
+          font-size: 24px;
+          color: white;
+          text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      }
+      @keyframes fade-in {
+          from {
+              opacity: 0;
+          }
+          to {
+              opacity: 1;
+          }
+      }
+      /* Стили для красивой кнопки */
+      .gradient-button {
+          padding: 15px 30px;
+          font-size: 18px;
+          border: none;
+          cursor: pointer;
+          border-radius: 5px;
+          background-image: linear-gradient(to right, #ff4081, #800000);
+          color: white;
+          text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+          transition: transform 0.3s ease;
+      }
+      .gradient-button:hover {
+          transform: scale(1.05);
+      }
+  </style>
+</head>
+<body>
+<div id="hearts-container">
+    <!-- Здесь будут сердечки -->
+</div>
+
+<button class="gradient-button" onclick="loadModel()">Нажми сюда Аружан это для тебя!</button> <!-- Красивая кнопка для загрузки модели -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+    function loadModel() {
+      
+        // Создаем сцену, камеру и рендерер
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Создаем освещение
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+        const bottomLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        bottomLight.position.set(0, -1, 0);
+        bottomLight.castShadow = true;
+        scene.add(bottomLight);
+      
+        // Загружаем 3D модель
+        const loader = new THREE.GLTFLoader();
+        loader.load(
+            'models/eye/scene.gltf',
+            function (gltf) {
+                const model = gltf.scene;
+                model.scale.set(10, 10, 10);
+                camera.position.set(0, 0, 5);
+                model.castShadow = true;
+                model.receiveShadow = true;
+                scene.add(model);
+                camera.lookAt(model.position);
+                
+                const canvas = document.createElement('canvas');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+const context = canvas.getContext('2d');
+
+// Создаем радиальный градиент
+const gradient = context.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width / 2);
+gradient.addColorStop(0, '#ff4081'); // Темно-фиолетовый цвет
+gradient.addColorStop(1, '#800000'); // Розовый цвет
+
+// Заливаем холст градиентом
+context.fillStyle = gradient;
+context.fillRect(0, 0, canvas.width, canvas.height);
+
+// Преобразуем холст в текстуру
+const backgroundTexture = new THREE.CanvasTexture(canvas);
+backgroundTexture.minFilter = THREE.LinearFilter;
+backgroundTexture.magFilter = THREE.LinearFilter;
+
+
+// Применяем текстуру как фон сцены
+scene.background = backgroundTexture;
+                const bbox = new THREE.Box3().setFromObject(model);
+                const center = bbox.getCenter(new THREE.Vector3());
+                model.position.sub(center);
+            },
+            undefined,
+            function (error) {
+                console.error(error);
+            }
+        );
+        
+        // Добавляем вращение мышкой
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.autoRotate = true;
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.50;
+        controls.enableZoom = true;
+
+        // Создаем текстуру для сердечка
+        const heartTexture = new THREE.TextureLoader().load('models/eye/heart.png');
+
+        // Создаем материал для сердечка
+        const heartMaterial = new THREE.SpriteMaterial({ map: heartTexture });
+
+        // Создаем сердечки и добавляем их в сцену
+        const numHearts = 50;
+        for (let i = 0; i < numHearts; i++) {
+            const heartSprite = new THREE.Sprite(heartMaterial);
+            heartSprite.position.set(
+                Math.random() * 10 - 5,
+                Math.random() * 10 - 5,
+                Math.random() * 10 - 5
+            );
+            heartSprite.scale.set(0.5, 0.5, 0.5);
+            scene.add(heartSprite);
+        }
+
+       
+        
+        // Обновляем размер рендерера при изменении размера окна
+        window.addEventListener('resize', function () {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Обновляем сцену и камеру
+        function animate() {
+            requestAnimationFrame(animate);
+            scene.traverse(function (object) {
+                if (object.isSprite) {
+                    object.position.x += Math.random() * 0.2 - 0.1;
+                    object.position.y += Math.random() * 0.2 - 0.1;
+                    object.position.z += Math.random() * 0.2 - 0.1;
+                }
+            });
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+   
+        animate();
+        
+        // Показываем текст после загрузки модели
+        document.querySelector('.animation-container').style.opacity = 1;
+    }
+</script>
+<div class="animation-container"></div>
+</body>
+</html>
